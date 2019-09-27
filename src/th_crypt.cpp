@@ -4,13 +4,14 @@
 #include <vector>
 #include <algorithm>
 
+#include "noncopyable.h"
 #include "th_crypt.h"
 
 #pragma pack(push, 4)
 #pragma warning(push)
 #pragma warning(disable: 4625)
 #pragma warning(disable: 4626)
-class BitReader {
+class BitReader : noncopyable<BitReader> {
 public:
    BitReader(const unsigned char* start, unsigned int size) :
       start(start), size(size), pos(0)

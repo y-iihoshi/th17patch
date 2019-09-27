@@ -96,6 +96,7 @@
   <ItemGroup>
     <ClInclude Include="dat_utility.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="noncopyable.h" />
     <ClInclude Include="th_base.h" />
     <ClInclude Include="th_crypt.h" />
   </ItemGroup>

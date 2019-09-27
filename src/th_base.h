@@ -1,7 +1,7 @@
 
 namespace {
 
-class Header {
+class Header : noncopyable<Header> {
 public:
    unsigned char signature[4];
    unsigned int list_size;

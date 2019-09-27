@@ -9,6 +9,7 @@
 
 #include <Windows.h>
 
+#include "noncopyable.h"
 #include "main.h"
 #include "dat_utility.h"
 #include "th_crypt.h"
