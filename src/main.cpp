@@ -1,15 +1,11 @@
 
 #include <cstdio>
+
 #include <string>
 #include <vector>
-
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/spirit/home/support/detail/endian.hpp>
-#include <boost/utility.hpp>
+#include <memory>
+#include <fstream>
+#include <filesystem>
 
 #include <Windows.h>
 
@@ -18,12 +14,16 @@
 #include "th_crypt.h"
 #include "th_base.h"
 
-//#include <org/click3/dll_hack_lib.h>
+/* デバッグ用
+#include <boost/filesystem.hpp>
+#include <boost/utility.hpp>
+#include <org/click3/dll_hack_lib.h>
+*/
 
 class Th17 : public ThOwnerBase<Th17, 0x1B, 0x37, 0x075BCD15, 0x3ADE68B1, 0x08180754, 0x3E, 0x9B, 0x80> {
 public:
 
-   Th17(std::istream& in, const unsigned long long int file_size, const boost::shared_ptr<const Header> header, const boost::shared_ptr<const std::vector<FileRecord> > file_list) :
+   Th17(std::istream& in, const unsigned long long int file_size, const std::shared_ptr<const Header> header, const std::shared_ptr<const std::vector<FileRecord> > file_list) :
       ThOwnerBase(in, file_size, header, file_list)
    {
    }
@@ -39,7 +39,6 @@ public:
          {0xC1,	0x15,	0x0400,	0x2C00},
          {0x99,	0x7D,	0x0080,	0x4400}
       };
-      BOOST_ASSERT(index < _countof(conv_map));
       return conv_map[index];
    }
 
@@ -48,10 +47,6 @@ public:
          return nullptr;
       }
       return GetConvMap(DatUtility::CalcKeyIndex(&record.name.front(), record.name.length()));
-   }
-
-   std::wstring GetName() const {
-      return L"輝針城";
    }
 };
 
@@ -63,7 +58,6 @@ unsigned int GetPageSize(void) {
 }
 
 void* GetBaseAddr(const void* addr) {
-   BOOST_ASSERT(addr != NULL);
    MEMORY_BASIC_INFORMATION mbi;
    ::VirtualQuery(addr, &mbi, sizeof(mbi));
    return mbi.BaseAddress;
@@ -72,7 +66,6 @@ void* GetBaseAddr(const void* addr) {
 bool ChangeProtect(unsigned int* old_protect, const void* addr, unsigned int new_protect) {
    void* const base_addr = GetBaseAddr(addr);
    const unsigned int page_size = GetPageSize();
-   BOOST_STATIC_ASSERT(sizeof(DWORD) == sizeof(unsigned int));
    if (0 == ::VirtualProtect(base_addr, page_size, new_protect, reinterpret_cast<DWORD*>(old_protect))) {
       return false;
    }
@@ -80,8 +73,6 @@ bool ChangeProtect(unsigned int* old_protect, const void* addr, unsigned int new
 }
 
 bool ChangeCode(unsigned int addr, const unsigned char* old_code, const unsigned char* new_code, unsigned int size) {
-   BOOST_ASSERT(old_code != NULL);
-   BOOST_ASSERT(new_code != NULL);
    unsigned char* write_ptr = reinterpret_cast<unsigned char*>(addr);
    unsigned int old_protect;
    if (!ChangeProtect(&old_protect, write_ptr, PAGE_EXECUTE_READWRITE)) {
@@ -101,8 +92,8 @@ bool ChangeCode(unsigned int addr, const unsigned char* old_code, const unsigned
 
 
 HANDLE th17dat = 0;
-boost::shared_ptr<boost::filesystem::ifstream> ifs;
-boost::shared_ptr<Th17> th17;
+std::shared_ptr<std::ifstream> ifs;
+std::shared_ptr<Th17> th17;
 const FileRecord *prevRecord = nullptr;
 
 HANDLE _stdcall d_CreateFileA(
@@ -118,11 +109,11 @@ HANDLE _stdcall d_CreateFileA(
    if (result == INVALID_HANDLE_VALUE) {
       return INVALID_HANDLE_VALUE;
    }
-   const boost::filesystem::path path = lpFileName;
+   const std::filesystem::path path = lpFileName;
    if (path.filename() == "th17.dat") {
       th17dat = result;
-      ifs = boost::make_shared<boost::filesystem::ifstream>(path, std::ios::binary);
-      th17 = Th17::Open(*ifs, boost::filesystem::file_size(path));
+      ifs = std::make_shared<std::ifstream>(path, std::ios::binary);
+      th17 = Th17::Open(*ifs, std::filesystem::file_size(path));
    }
    return result;
 }
@@ -190,6 +181,33 @@ bool ChangeIAT(HMODULE module) {
    return true;
 }
 
+void dumpSht(unsigned char * const data) {
+   float& unknown = *reinterpret_cast<float*>(&data[0x04]);
+   float& unknown2 = *reinterpret_cast<float*>(&data[0x08]);
+   float& unknown3 = *reinterpret_cast<float*>(&data[0x0C]);
+   ::printf("????: %f %f %f\n", unknown, unknown2, unknown3);
+   float& speed = *reinterpret_cast<float*>(&data[0x10]);
+   float& speed2 = *reinterpret_cast<float*>(&data[0x14]);
+   float& speed3 = *reinterpret_cast<float*>(&data[0x18]);
+   float& speed4 = *reinterpret_cast<float*>(&data[0x1C]);
+   ::printf("速度: %f %f %f %f\n", speed, speed2, speed3, speed4);
+   unsigned int& powerMax = *reinterpret_cast<unsigned int*>(&data[0x20]); // signed?
+   ::printf("Power上限: %d\n", powerMax);
+   unsigned int& unknown4 = *reinterpret_cast<unsigned int*>(&data[0x24]);
+   ::printf("????: %d\n", unknown4);
+   signed int& damageLimit = *reinterpret_cast<signed int*>(&data[0x28]);
+   ::printf("ダメージキャップ: %d\n", damageLimit);
+   float* const unknown5 = reinterpret_cast<float*>(&data[0x40]);// float[40];
+   ::printf("????:\n");
+   for (unsigned int i = 0; i < 40; i++) {
+      ::printf("%5.2f ", unknown5[i]);
+      unknown5[i] = -1.0;
+      if (i % 4 == 3) {
+         ::printf("\n");
+      }
+   }
+}
+
 // カワウソ妖夢1面の誤字「早詰み」を「早積み」に
 void patchHayatsumi(unsigned char* const data) {
    if (prevRecord->name != "st01h.msg") {
@@ -224,11 +242,33 @@ void patchPlayer02C(unsigned char* const data) {
    data[40] = 160;
 }
 
+// オオワシ魔理沙の爆風ダメージをカワウソ魔理沙と同値の16/13/11/10(power4/3/2/1)に変更
+void patchPlayer01C(unsigned char* const data) {
+   if (prevRecord->name != "pl01c.sht") {
+      return;
+   }
+   if (data[0x00000BFA] != 10 || data[0x00000C52] != 10 || data[0x00000CAA] != 10
+      || data[0x00000DB6] != 11 || data[0x00000E0E] != 11 || data[0x00000E66] != 11 || data[0x00000EBE] != 11)
+   {
+      return;
+   }
+   const unsigned int power3 = 11;
+   const unsigned int power4 = 10;
+   data[0x00000BFA] = power3;
+   data[0x00000C52] = power3;
+   data[0x00000CAA] = power3;
+   data[0x00000DB6] = power4;
+   data[0x00000E0E] = power4;
+   data[0x00000E66] = power4;
+   data[0x00000EBE] = power4;
+}
+
 void _stdcall patchFile(unsigned char* const data) {
    if (prevRecord == nullptr) {
       return;
    }
-   //patchPlayer02C(data);
+   patchPlayer02C(data);
+   // patchPlayer01C(data); // 些細な違いすぎてリプレイ互換性壊すだけになりがちなのでdisable
    patchHayatsumi(data);
    patch4men(data);
 }
@@ -575,6 +615,7 @@ bool patchReplayAchievement() {
 }
 
 void main() {
+   // デバッグ用に黒窓を生やす
    //org::click3::DllHackLib::SetupConsole();
 
    ::printf("ChangeIAT: ");

@@ -1,10 +1,8 @@
 
 #include <cstring>
+
 #include <vector>
 #include <algorithm>
-
-#include <boost/utility.hpp>
-#include <boost/assert.hpp>
 
 #include "th_crypt.h"
 
@@ -12,18 +10,16 @@
 #pragma warning(push)
 #pragma warning(disable: 4625)
 #pragma warning(disable: 4626)
-class BitReader : boost::noncopyable {
+class BitReader {
 public:
    BitReader(const unsigned char* start, unsigned int size) :
       start(start), size(size), pos(0)
    {
-      BOOST_ASSERT(start != NULL);
    }
    ~BitReader() {
    }
 
    unsigned int ReadBit(unsigned int len) {
-      BOOST_ASSERT(len <= 32);
       unsigned int bit_pos = pos % 8;
       unsigned int index = 0;
       const unsigned char* const max = start + (pos + len) / 8 + 1;
@@ -64,8 +60,6 @@ private:
 
 #define DICT_SIZE 0x2000
 void decomp(const unsigned char* in, unsigned int in_size, unsigned char* out, unsigned int out_size) {
-   BOOST_ASSERT(in != NULL);
-   BOOST_ASSERT(out != NULL);
    unsigned char dict[DICT_SIZE], * o;
    unsigned int dictop = 1;
    BitReader bit(in, in_size);

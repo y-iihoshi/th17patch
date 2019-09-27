@@ -1,14 +1,12 @@
 
 namespace {
 
-namespace endian = boost::spirit::endian;
-
-class Header : boost::noncopyable {
+class Header {
 public:
-   endian::ulittle8_t signature[4];
-   endian::ulittle32_t list_size;
-   endian::ulittle32_t compress_size;
-   endian::ulittle32_t list_count;
+   unsigned char signature[4];
+   unsigned int list_size;
+   unsigned int compress_size;
+   unsigned int list_count;
 
    template<unsigned int KEY1, unsigned int KEY2, unsigned int KEY3, unsigned int KEY4, unsigned int KEY5>
    bool Read(std::istream &in) {
@@ -111,14 +109,14 @@ public:
 template<typename T, unsigned int KEY1, unsigned int KEY2, unsigned int KEY3, unsigned int KEY4, unsigned int KEY5, unsigned int KEY6, unsigned int KEY7, unsigned int KEY8>
 class ThOwnerBase : public ExtractorBase {
 public:
-   const boost::shared_ptr<const std::vector<FileRecord> > file_list;
+   const std::shared_ptr<const std::vector<FileRecord> > file_list;
 
 protected:
    std::istream &in;
    const unsigned long long int file_size;
-   const boost::shared_ptr<const Header> header;
+   const std::shared_ptr<const Header> header;
 
-  ThOwnerBase(std::istream &in, const unsigned long long int file_size, const boost::shared_ptr<const Header> header, const boost::shared_ptr<const std::vector<FileRecord> > file_list) :
+  ThOwnerBase(std::istream &in, const unsigned long long int file_size, const std::shared_ptr<const Header> header, const std::shared_ptr<const std::vector<FileRecord> > file_list) :
     in(in), file_size(file_size), header(header), file_list(file_list)
   {
   }
@@ -127,7 +125,7 @@ private:
   bool SearchExt(const std::string &ext, unsigned int * const result) {
     unsigned int i = 0;
     for(const FileRecord record : *file_list.get()) {
-      const boost::filesystem::path path(record.name);
+      const std::filesystem::path path(record.name);
       if (path.extension() == ext) {
         *result = i;
         return true;
@@ -138,54 +136,25 @@ private:
   }
 
 public:
-  static boost::shared_ptr<T> Open(std::istream &in, const unsigned long long int file_size) {
+  static std::shared_ptr<T> Open(std::istream &in, const unsigned long long int file_size) {
     if (file_size < sizeof(Header)) {
        return {};
     }
 
-    const boost::shared_ptr<Header> header = boost::make_shared<Header>();
+    const std::shared_ptr<Header> header = std::make_shared<Header>();
     if (!header->Read<KEY1, KEY2, KEY3, KEY4, KEY5>(in) || header->compress_size + sizeof(*header) > file_size) {
       return {};
     }
 
-    const boost::shared_ptr<std::vector<FileRecord> > list = boost::make_shared<std::vector<FileRecord> >(header->list_count);
+    const std::shared_ptr<std::vector<FileRecord> > list = std::make_shared<std::vector<FileRecord> >(header->list_count);
     if (!FileRecord::Read<KEY6, KEY7 ,KEY8>(in, *header, file_size, *list)) {
       return {};
     }
-    return boost::make_shared<T>(in, file_size, header, list);
-  }
-
-  bool Extract(const unsigned int index, std::vector<unsigned char> &result) {
-    if (!in.good()) {
-      return false;
-    }
-    const FileRecord &record = file_list->at(index);
-    if (record.compress_size == 0) {
-      result.resize(0);
-      return true;
-    }
-    in.seekg(record.addr);
-    result.resize(record.compress_size);
-    in.read(reinterpret_cast<char *>(&result.front()), result.size());
-    if (!in.good()) {
-      return false;
-    }
-    const unsigned int * const keys = GetConvMap(DatUtility::CalcKeyIndex(&record.name.front(), record.name.length()));
-    thcrypter(&result.front(), result.size(), keys[0], keys[1], keys[2], keys[3]);
-    if (record.size != record.compress_size) {
-      std::vector<unsigned char> decompress_data(record.size);
-      decomp(&result.front(), result.size(), &decompress_data.front(), decompress_data.size());
-      result.swap(decompress_data);
-    }
-    return true;
+    return std::make_shared<T>(in, file_size, header, list);
   }
 
   unsigned int GetSize() const {
     return header->list_count;
-  }
-
-  boost::filesystem::path GetFileName(unsigned int index) const {
-    return boost::filesystem::path("data") / file_list->at(index).name;
   }
 
   virtual const unsigned int *GetConvMap(unsigned int index) = 0;
