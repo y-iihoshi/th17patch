@@ -1,5 +1,6 @@
 
 #include <cstring>
+#include <cassert>
 
 #include <vector>
 #include <algorithm>
@@ -16,11 +17,13 @@ public:
    BitReader(const unsigned char* start, unsigned int size) :
       start(start), size(size), pos(0)
    {
+      assert(start != NULL);
    }
    ~BitReader() {
    }
 
    unsigned int ReadBit(unsigned int len) {
+      assert(len <= 32);
       unsigned int bit_pos = pos % 8;
       unsigned int index = 0;
       const unsigned char* const max = start + (pos + len) / 8 + 1;
@@ -61,6 +64,8 @@ private:
 
 #define DICT_SIZE 0x2000
 void decomp(const unsigned char* in, unsigned int in_size, unsigned char* out, unsigned int out_size) {
+   assert(in != NULL);
+   assert(out != NULL);
    unsigned char dict[DICT_SIZE], * o;
    unsigned int dictop = 1;
    BitReader bit(in, in_size);

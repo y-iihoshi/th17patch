@@ -1,4 +1,6 @@
 
+#include <cassert>
+
 #include <vector>
 #include <string>
 #include <memory>
@@ -29,6 +31,7 @@ struct FindListExt {
 } // anonymous
 
 unsigned int CalcKeyIndex(std::shared_ptr<const LIST> file_data) {
+  assert(file_data);
   return CalcKeyIndex(file_data->fn, ::strlen(file_data->fn));
 }
 

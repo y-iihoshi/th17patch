@@ -1,5 +1,6 @@
 
 #include <cstdio>
+#include <cassert>
 
 #include <string>
 #include <vector>
@@ -40,6 +41,7 @@ public:
          {0xC1,	0x15,	0x0400,	0x2C00},
          {0x99,	0x7D,	0x0080,	0x4400}
       };
+      assert(index < _countof(conv_map));
       return conv_map[index];
    }
 
@@ -59,6 +61,7 @@ unsigned int GetPageSize(void) {
 }
 
 void* GetBaseAddr(const void* addr) {
+   assert(addr != NULL);
    MEMORY_BASIC_INFORMATION mbi;
    ::VirtualQuery(addr, &mbi, sizeof(mbi));
    return mbi.BaseAddress;
@@ -67,6 +70,7 @@ void* GetBaseAddr(const void* addr) {
 bool ChangeProtect(unsigned int* old_protect, const void* addr, unsigned int new_protect) {
    void* const base_addr = GetBaseAddr(addr);
    const unsigned int page_size = GetPageSize();
+   static_assert(sizeof(DWORD) == sizeof(unsigned int));
    if (0 == ::VirtualProtect(base_addr, page_size, new_protect, reinterpret_cast<DWORD*>(old_protect))) {
       return false;
    }
@@ -74,6 +78,8 @@ bool ChangeProtect(unsigned int* old_protect, const void* addr, unsigned int new
 }
 
 bool ChangeCode(unsigned int addr, const unsigned char* old_code, const unsigned char* new_code, unsigned int size) {
+   assert(old_code != NULL);
+   assert(new_code != NULL);
    unsigned char* write_ptr = reinterpret_cast<unsigned char*>(addr);
    unsigned int old_protect;
    if (!ChangeProtect(&old_protect, write_ptr, PAGE_EXECUTE_READWRITE)) {
